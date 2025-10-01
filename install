@@ -1,0 +1,99 @@
+#!/bin/bash
+# Arjienx Advanced DNSTT App Script v.0.2.3x 2025
+
+cd ~
+rm -rf install
+architecture=$(uname -m)
+echo "Architecture: $architecture"
+
+if [ ! -d "$HOME/storage" ]; then
+    termux-setup-storage
+fi
+
+version=$(getprop ro.build.version.release)
+if [[ "$version" =~ ^5.* || "$version" =~ ^6.* ]]; then
+    echo "deb https://packages.termux.dev/termux-main-21/ stable main" > "$PREFIX/etc/apt/sources.list"
+    echo "deb https://termux.dev/game-packages-21-bin games stable" > "$PREFIX/etc/apt/sources.list.d/game.list"
+    echo "deb https://termux.dev/science-packages-21-bin science stable" > "$PREFIX/etc/apt/sources.list.d/science.list"
+    clear
+else
+    echo "Current version: $version"
+fi
+
+export DEBIAN_FRONTEND=noninteractive
+apt update
+apt upgrade -y openssl curl -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold"
+apt install -y dnsutils nano curl -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold"
+
+rm -rf ~/.bashrc
+echo "alias arjienx='cd ~ && arjienx'" > ~/.bashrc
+echo "alias arjienx-client='cd ~ && arjienx-client'" > ~/.bashrc
+echo "alias arjienx-dnstt-client='cd ~ && arjienx-dnstt-client'" > ~/.bashrc
+source ~/.bashrc
+
+arch=$(uname -m)
+
+case "$arch" in
+    aarch64|arm64)
+        CLIENT_URL="https://raw.githubusercontent.com/arjienx/client-dnstt-app-x/main/client-arm64"
+        DNSTT_URL="https://raw.githubusercontent.com/arjienx/client-dnstt-app-x/main/client-dnstt-arm64"
+        ;;
+    armv7l|armv7)
+        CLIENT_URL="https://raw.githubusercontent.com/arjienx/client-dnstt-app-x/main/client-armv7"
+        DNSTT_URL="https://raw.githubusercontent.com/arjienx/client-dnstt-app-x/main/client-dnstt-armv7"
+        ;;
+    armv8l)
+        CLIENT_URL="https://raw.githubusercontent.com/arjienx/client-dnstt-app-x/main/client-armv64"
+        DNSTT_URL="https://raw.githubusercontent.com/arjienx/client-dnstt-app-x/main/client-dnstt-armv64"
+        ;;
+    *)
+        echo "unknown architecture: $arch"
+        exit 1
+        ;;
+esac
+
+echo "" > ../usr/bin/arjienx-dnstt-client
+curl --insecure -fL -o ../usr/bin/arjienx-dnstt-client "$DNSTT_URL"
+
+if [ $? -eq 0 ]; then
+    chmod +x ../usr/bin/arjienx-dnstt-client
+    for i in {1..2}; do
+        if [ ! -x ../usr/bin/arjienx-dnstt-client ]; then
+            chmod +x ../usr/bin/arjienx-dnstt-client
+        fi
+        sleep 3
+    done
+    echo "Arjienx DNSTT Client - Successfully Installed."
+else
+    rm -rf ../usr/bin/arjienx-dnstt-client
+    echo "Download Failed. Use Stable Connection. Try Again."
+fi
+
+echo "" > ../usr/bin/arjienx-client
+echo "" > ../usr/bin/arjienx
+
+curl --insecure -fL -o ../usr/bin/arjienx-client "$CLIENT_URL"
+cp ../usr/bin/arjienx-client ../usr/bin/arjienx
+
+if [ $? -eq 0 ]; then
+    chmod +x ../usr/bin/arjienx-client
+    for i in {1..2}; do
+        if [ ! -x ../usr/bin/arjienx-client ]; then
+            chmod +x ../usr/bin/arjienx-client
+        fi
+        sleep 3
+    done
+    chmod +x ../usr/bin/arjienx
+    for i in {1..2}; do
+        if [ ! -x ../usr/bin/arjienx ]; then
+            chmod +x ../usr/bin/arjienx
+        fi
+        sleep 3
+    done
+    echo "Arjienx DNSTT Client UI - Successfully Installed."
+    echo "type 'arjienx' or 'arjienx-client' to run."
+else
+    rm -rf ../usr/bin/arjienx
+    rm -rf ../usr/bin/arjienx-client
+    echo "Download Failed. Use Stable Connection. Try Again."
+fi
