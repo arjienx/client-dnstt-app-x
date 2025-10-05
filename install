@@ -3,35 +3,14 @@
 
 cd ~
 rm -rf install
-architecture=$(uname -m)
-echo "Architecture: $architecture"
-
-if [ ! -d "$HOME/storage" ]; then
-    termux-setup-storage
-fi
-
-version=$(getprop ro.build.version.release)
-if [[ "$version" =~ ^5.* || "$version" =~ ^6.* ]]; then
-    echo "deb https://packages.termux.dev/termux-main-21/ stable main" > "$PREFIX/etc/apt/sources.list"
-    echo "deb https://termux.dev/game-packages-21-bin games stable" > "$PREFIX/etc/apt/sources.list.d/game.list"
-    echo "deb https://termux.dev/science-packages-21-bin science stable" > "$PREFIX/etc/apt/sources.list.d/science.list"
-    clear
-else
-    echo "Current version: $version"
-fi
-
-export DEBIAN_FRONTEND=noninteractive
-apt update
-apt upgrade -y openssl curl -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold"
-apt install -y dnsutils nano curl -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold"
-
-rm -rf ~/.bashrc
-echo "alias arjienx='cd ~ && arjienx'" > ~/.bashrc
-echo "alias arjienx-client='cd ~ && arjienx-client'" > ~/.bashrc
-echo "alias arjienx-dnstt-client='cd ~ && arjienx-dnstt-client'" > ~/.bashrc
-source ~/.bashrc
-
 arch=$(uname -m)
+
+echo "Architecture: $arch"
+
+case "$OSTYPE" in
+    linux-android*)   : ;;
+    *)    echo "Only supported android." ;;
+esac
 
 case "$arch" in
     aarch64|arm64)
@@ -52,15 +31,45 @@ case "$arch" in
         ;;
 esac
 
-echo "" > ../usr/bin/arjienx-dnstt-client
-curl --insecure -fL -o ../usr/bin/arjienx-dnstt-client "$DNSTT_URL"
+[[ -d "$HOME/storage" ]] || termux-setup-storage
 
-if [ $? -eq 0 ]; then
+# inits (after the checks)
+: > ../usr/bin/arjienx-dnstt-client
+: > ../usr/bin/arjienx-client
+: > ../usr/bin/arjienx
+
+version=$(getprop ro.build.version.release)
+if [[ "$version" =~ ^(5|6).* ]]; then
+    echo "deb https://packages.termux.dev/termux-main-21/ stable main" > "$PREFIX/etc/apt/sources.list"
+    echo "deb https://termux.dev/game-packages-21-bin games stable" > "$PREFIX/etc/apt/sources.list.d/game.list"
+    echo "deb https://termux.dev/science-packages-21-bin science stable" > "$PREFIX/etc/apt/sources.list.d/science.list"
+    clear
+else
+    echo "Current version: $version"
+fi
+
+export DEBIAN_FRONTEND=noninteractive
+pkg up -y
+apt upgrade -y openssl curl -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold"
+apt install -y dnsutils nano curl -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold"
+
+# much safer better than removing the current .bashrc
+if [[ -f ~/.bashrc ]]; then
+    echo 'source ~/.bashrc_arjien &>/dev/null || :' >> ~/.bashrc
+else
+    : > ~/.bashrc
+fi
+printf '\n# arjien aliases, remove if not needed\n%s\n%s\n%s\n' \
+    "alias arjienx='cd ~ && arjienx'" \
+    "alias arjienx-client='cd ~ && arjienx-client'" \
+    "alias arjienx-dnstt-client='cd ~ && arjienx-dnstt-client'" >> ~/.bashrc_arjien
+source ~/.bashrc_arjien
+
+# directly test curl instead of checking out the exit code, so if anything happens bad it will safely execute else
+if curl --insecure -fL -o ../usr/bin/arjienx-dnstt-client "$DNSTT_URL"; then
     chmod +x ../usr/bin/arjienx-dnstt-client
     for i in {1..2}; do
-        if [ ! -x ../usr/bin/arjienx-dnstt-client ]; then
-            chmod +x ../usr/bin/arjienx-dnstt-client
-        fi
+        [[ -x ../usr/bin/arjienx-dnstt-client ]] || chmod +x ../usr/bin/arjienx-dnstt-client
         sleep 3
     done
     echo "Arjienx DNSTT Client - Successfully Installed."
@@ -68,32 +77,21 @@ else
     rm -rf ../usr/bin/arjienx-dnstt-client
     echo "Download Failed. Use Stable Connection. Try Again."
 fi
-
-echo "" > ../usr/bin/arjienx-client
-echo "" > ../usr/bin/arjienx
-
-curl --insecure -fL -o ../usr/bin/arjienx-client "$CLIENT_URL"
-cp ../usr/bin/arjienx-client ../usr/bin/arjienx
-
-if [ $? -eq 0 ]; then
+ 
+if curl --insecure -fL -o ../usr/bin/arjienx "$CLIENT_URL"; then
     chmod +x ../usr/bin/arjienx-client
     for i in {1..2}; do
-        if [ ! -x ../usr/bin/arjienx-client ]; then
-            chmod +x ../usr/bin/arjienx-client
-        fi
+        [[ -x ../usr/bin/arjienx-client ]] || chmod +x ../usr/bin/arjienx-client
         sleep 3
     done
     chmod +x ../usr/bin/arjienx
     for i in {1..2}; do
-        if [ ! -x ../usr/bin/arjienx ]; then
-            chmod +x ../usr/bin/arjienx
-        fi
+        [[ -x ../usr/bin/arjienx ]] || chmod +x ../usr/bin/arjienx
         sleep 3
     done
     echo "Arjienx DNSTT Client UI - Successfully Installed."
     echo "type 'arjienx' or 'arjienx-client' to run."
 else
-    rm -rf ../usr/bin/arjienx
-    rm -rf ../usr/bin/arjienx-client
+    rm -rf ../usr/bin/arjienx ../usr/bin/arjienx-client
     echo "Download Failed. Use Stable Connection. Try Again."
 fi
