@@ -22,6 +22,7 @@ fi
 
 export DEBIAN_FRONTEND=noninteractive
 apt update
+apt upgrade -y
 apt upgrade -y openssl curl -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold"
 apt install -y dnsutils nano curl -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold"
 
